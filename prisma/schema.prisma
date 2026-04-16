@@ -1,0 +1,45 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id      String   @id @default(cuid())
+  email   String   @unique
+  boards  Board[]
+}
+
+model Board {
+  id        Int      @id @default(autoincrement())
+  title     String
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  columns   Column[]
+}
+
+model Column {
+  id       Int    @id @default(autoincrement())
+  title    String
+  order    Int
+  boardId  Int
+  board    Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards    Card[]
+}
+
+model Card {
+  id       Int    @id @default(autoincrement())
+  title    String
+  order    Int
+  columnId Int
+  column   Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
+}
