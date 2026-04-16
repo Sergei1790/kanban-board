@@ -9,12 +9,12 @@ export default async function SignInPage() {
                     Sign In
                 </h1>
                 <p className="text-muted text-center text-sm">Sign in to access your boards</p>
-                <form action={async () => { 'use server'; await signIn('github'); }}>
+                <form action={async () => { 'use server'; await signIn('github', { redirectTo: '/' }); }}>
                     <button type="submit" className="w-full bg-card hover:bg-accent/40 border border-white/10 text-foreground px-4 py-2 rounded-xl transition-colors cursor-pointer font-medium">
                         Continue with GitHub
                     </button>
                 </form>
-                <form action={async () => { 'use server'; await signIn('google'); }}>
+                <form action={async () => { 'use server'; await signIn('google', { redirectTo: '/' }); }}>
                     <button type="submit" className="w-full bg-card hover:bg-accent/40 border border-white/10 text-foreground px-4 py-2 rounded-xl transition-colors cursor-pointer font-medium">
                         Continue with Google
                     </button>
