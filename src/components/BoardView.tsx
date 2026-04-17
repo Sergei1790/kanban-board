@@ -13,6 +13,11 @@ type Board = {id: number; title: string; columns: Column[]};
 export default function BoardView({board}: {board: Board}) {
     const [newColumnTitle, setNewColumnTitle] = useState('');
     const [columns, setColumns] = useState(board.columns);
+    const [prevBoardColumns, setPrevBoardColumns] = useState(board.columns);
+    if (prevBoardColumns !== board.columns) {
+        setPrevBoardColumns(board.columns);
+        setColumns(board.columns);
+    }
     const [activeCard, setActiveCard] = useState<Card | null>(null);
     const sensors = useSensors(useSensor(PointerSensor, {activationConstraint: {distance: 8}}));
 
@@ -88,6 +93,7 @@ export default function BoardView({board}: {board: Board}) {
 
 function ColumnView({column, boardId}: {column: Column; boardId: number}) {
     const [newCardTitle, setNewCardTitle] = useState('');
+    const [confirming, setConfirming] = useState(false);
     const {setNodeRef} = useSortable({id: column.id});
 
     async function handleAddCard() {
@@ -100,7 +106,15 @@ function ColumnView({column, boardId}: {column: Column; boardId: number}) {
         <div ref={setNodeRef} className="shrink-0 w-64 bg-card border border-white/10 rounded-2xl p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
                 <h2 className="font-semibold text-foreground">{column.title}</h2>
-                <button type="button" onClick={() => deleteColumn(column.id, boardId)} className="text-muted hover:text-red-400 text-sm transition-colors cursor-pointer">✕</button>
+                {confirming ? (
+                    <div className='flex items-center gap-2' onKeyDown={(e) => e.key === 'Escape' && setConfirming(false)}>
+                        <span className="text-muted text-xs">Delete?</span>
+                        <button type="button" onClick={() =>deleteColumn(column.id, boardId)}className="text-red-400 hover:text-red-300 text-xs cursor-pointer transition-colors">Yes</button>
+                        <button type="button" onClick={() =>setConfirming(false)}className="text-muted hover:text-foreground text-xs cursor-pointer transition-colors">No</button>
+                    </div>
+                ):(
+                    <button type='button' onClick={() => setConfirming(true)} className="text-muted hover:text-red-400 text-sm transition-colors cursor-pointer">✕</button>
+                )}
             </div>
             <SortableContext items={column.cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
                 <div className="flex flex-col gap-2">
