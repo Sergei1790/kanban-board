@@ -105,7 +105,7 @@ function ColumnView({column, boardId}: {column: Column; boardId: number}) {
     return (
         <div ref={setNodeRef} className="shrink-0 w-64 bg-card border border-white/10 rounded-2xl p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
-                <h2 className="font-semibold text-foreground">{column.title}</h2>
+                <h2 className="font-semibold text-foreground">{column.title}<span className="ml-2 text-xs bg-accent/40 text-muted px-2 py-0.5 rounded-full">{column.cards.length}</span></h2>
                 {confirming ? (
                     <div className='flex items-center gap-2' onKeyDown={(e) => e.key === 'Escape' && setConfirming(false)}>
                         <span className="text-muted text-xs">Delete?</span>
