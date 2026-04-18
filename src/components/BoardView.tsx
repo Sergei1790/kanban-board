@@ -4,7 +4,7 @@ import {useState} from 'react';
 import {DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors} from '@dnd-kit/core';
 import {SortableContext, useSortable, verticalListSortingStrategy} from '@dnd-kit/sortable';
 import {CSS} from '@dnd-kit/utilities';
-import {createColumn, deleteColumn, createCard, deleteCard, moveCard} from '@/lib/actions';
+import {createColumn, deleteColumn, createCard, deleteCard, moveCard, updateColumnTitle} from '@/lib/actions';
 
 type Card = {id: number; title: string; order: number; columnId: number};
 type Column = {id: number; title: string; order: number; cards: Card[]};
@@ -93,6 +93,8 @@ export default function BoardView({board}: {board: Board}) {
 
 function ColumnView({column, boardId}: {column: Column; boardId: number}) {
     const [newCardTitle, setNewCardTitle] = useState('');
+    const [editing, setEditing] = useState(false);
+    const [titleValue, setTitleValue] = useState(column.title);
     const [confirming, setConfirming] = useState(false);
     const {setNodeRef} = useSortable({id: column.id});
 
@@ -105,7 +107,23 @@ function ColumnView({column, boardId}: {column: Column; boardId: number}) {
     return (
         <div ref={setNodeRef} className="shrink-0 w-64 bg-card border border-white/10 rounded-2xl p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
-                <h2 className="font-semibold text-foreground">{column.title}<span className="ml-2 text-xs bg-accent/40 text-muted px-2 py-0.5 rounded-full">{column.cards.length}</span></h2>
+                {editing ? (
+                    <input
+                        autoFocus
+                        value={titleValue}
+                        onChange={(e) => setTitleValue(e.target.value)}
+                        onKeyDown={async (e) => {
+                            if (e.key === 'Enter') {
+                                await updateColumnTitle(column.id, titleValue, boardId);
+                                setEditing(false);
+                            }
+                            if (e.key === 'Escape') { setTitleValue(column.title); setEditing(false); }
+                        }}
+                        className="bg-transparent border-b border-primary/60 text-foreground font-semibold focus:outline-none w-full"
+                    />
+                ) : (
+                    <h2 className="font-semibold text-foreground cursor-pointer" onDoubleClick={() => setEditing(true)}>{titleValue}</h2>
+                )}
                 {confirming ? (
                     <div className='flex items-center gap-2' onKeyDown={(e) => e.key === 'Escape' && setConfirming(false)}>
                         <span className="text-muted text-xs">Delete?</span>
@@ -149,7 +167,7 @@ function CardView({card, boardId}: {card: Card; boardId: number}) {
     return (
         <div
             ref={setNodeRef}
-            style={style}
+            style={style}                           
             {...attributes}
             {...listeners}
             className="bg-bg border border-white/10 rounded-xl p-3 flex items-center justify-between group cursor-grab active:cursor-grabbing"
