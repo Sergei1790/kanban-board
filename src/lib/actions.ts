@@ -71,6 +71,19 @@ export async function createColumn(boardId: number, title: string) {
     revalidatePath(`/board/${boardId}`);
 }
 
+export async function updateColumnTitle(id: number, title: string, boardId: number) {
+    const session = await auth();
+    if (!session?.user?.email) throw new Error('Not authenticated');
+
+    await prisma.column.update({
+        where: {id},
+        data: {title},
+    });
+
+    revalidatePath(`/board/${boardId}`);
+}
+
+
 export async function deleteColumn(id: number, boardId: number) {
     const session = await auth();
     if (!session?.user?.email) throw new Error('Not authenticated');
