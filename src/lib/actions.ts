@@ -4,6 +4,20 @@ import {prisma} from '@/lib/prisma';
 import {auth} from '@/auth';
 import {revalidatePath} from 'next/cache';
 
+async function getOwnedBoardOrThrow(boardId: number) {
+    const session = await auth();
+    if (!session?.user?.email) throw new Error('Not authenticated');
+
+    const user = await prisma.user.findUnique({where: {email: session.user.email}});
+    if (!user) throw new Error('Not authenticated');
+
+    const board = await prisma.board.findFirst({
+        where: {id: boardId, userId: user.id}
+    });
+    if (!board) throw new Error('Forbidden');
+
+    return board;
+}
 export async function getBoards() {
     const session = await auth();
     if (!session?.user?.email) return [];
@@ -36,7 +50,13 @@ export async function deleteBoard(id: number) {
     const session = await auth();
     if (!session?.user?.email) throw new Error('Not authenticated');
 
-    await prisma.board.delete({where: {id}});
+    const user = await prisma.user.findUnique({where: {email: session.user.email}});
+    if (!user) throw new Error('Not authenticated');
+
+    await prisma.board.delete({
+        where: {id, userId: user.id}   
+    });
+
     revalidatePath('/');
 }
 
@@ -59,9 +79,8 @@ export async function getBoardWithColumns(id: number) {
 }
 
 export async function createColumn(boardId: number, title: string) {
-    const session = await auth();
-    if (!session?.user?.email) throw new Error('Not authenticated');
-
+    await getOwnedBoardOrThrow(boardId);
+    
     const count = await prisma.column.count({where: {boardId}});
 
     await prisma.column.create({
@@ -72,8 +91,7 @@ export async function createColumn(boardId: number, title: string) {
 }
 
 export async function updateColumnTitle(id: number, title: string, boardId: number) {
-    const session = await auth();
-    if (!session?.user?.email) throw new Error('Not authenticated');
+    await getOwnedBoardOrThrow(boardId);
 
     await prisma.column.update({
         where: {id},
@@ -85,16 +103,15 @@ export async function updateColumnTitle(id: number, title: string, boardId: numb
 
 
 export async function deleteColumn(id: number, boardId: number) {
-    const session = await auth();
-    if (!session?.user?.email) throw new Error('Not authenticated');
+    await getOwnedBoardOrThrow(boardId);
 
     await prisma.column.delete({where: {id}});
+
     revalidatePath(`/board/${boardId}`);
 }
 
 export async function createCard(columnId: number, title: string, boardId: number) {
-    const session = await auth();
-    if (!session?.user?.email) throw new Error('Not authenticated');
+    await getOwnedBoardOrThrow(boardId);
 
     const count = await prisma.card.count({where: {columnId}});
 
@@ -106,17 +123,15 @@ export async function createCard(columnId: number, title: string, boardId: numbe
 }
 
 export async function deleteCard(id: number, boardId: number) {
-    const session = await auth();
-    if (!session?.user?.email) throw new Error('Not authenticated');
-
+    await getOwnedBoardOrThrow(boardId);
+    
     await prisma.card.delete({where: {id}});
 
     revalidatePath(`/board/${boardId}`);
 }
 
 export async function moveCard(cardId: number, newColumnId: number, boardId: number) {
-    const session = await auth();
-    if (!session?.user?.email) throw new Error('Not authenticated');
+    await getOwnedBoardOrThrow(boardId);
 
     const count = await prisma.card.count({where: {columnId: newColumnId}});
 

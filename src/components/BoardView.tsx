@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {useState} from 'react';
 import {DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors} from '@dnd-kit/core';
 import {SortableContext, useSortable, verticalListSortingStrategy} from '@dnd-kit/sortable';
@@ -61,6 +62,9 @@ export default function BoardView({board}: {board: Board}) {
     return (
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <div className="p-6">
+                <Link href="/" className="text-muted hover:text-foreground text-sm transition-colors mb-2 inline-block">
+                    ← Back to boards
+                </Link>
                 <h1 className="text-2xl font-bold text-foreground mb-6">{board.title}</h1>
                 <div className="flex gap-4 items-start overflow-x-auto pb-4">
                     {columns.map((col) => (
@@ -74,7 +78,7 @@ export default function BoardView({board}: {board: Board}) {
                             placeholder="New column..."
                             className="border border-white/10 bg-card text-foreground placeholder-muted rounded-xl px-3 py-2 w-full focus:outline-none focus:border-primary/60 mb-2"
                         />
-                        <button type="button" onClick={handleAddColumn} className="w-full bg-primary hover:bg-primary/80 text-white px-3 py-2 rounded-xl transition-colors cursor-pointer text-sm font-medium">
+                        <button type="button" onClick={handleAddColumn} disabled={!newColumnTitle.trim()} className="w-full bg-primary hover:bg-primary/80 text-white px-3 py-2 rounded-xl transition-colors cursor-pointer text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
                             + Add Column
                         </button>
                     </div>
@@ -148,7 +152,7 @@ function ColumnView({column, boardId}: {column: Column; boardId: number}) {
                 placeholder="Add card..."
                 className="border border-white/10 bg-bg text-foreground placeholder-muted rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary/60"
             />
-            <button type="button" onClick={handleAddCard} className="w-full bg-accent/40 hover:bg-accent/60 text-foreground px-3 py-1 rounded-xl transition-colors cursor-pointer text-sm">
+            <button type="button" onClick={handleAddCard} disabled={!newCardTitle.trim()} className="w-full bg-accent/40 hover:bg-accent/60 text-foreground px-3 py-1 rounded-xl transition-colors cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed">
                 + Add Card
             </button>
         </div>
