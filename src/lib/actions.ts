@@ -31,33 +31,43 @@ export async function getBoards() {
 }
 
 export async function createBoard(title: string) {
-    const session = await auth();
-    if (!session?.user?.email) throw new Error('Not authenticated');
+    try{
+        const session = await auth();
+        if (!session?.user?.email) throw new Error('Not authenticated');
 
-    let user = await prisma.user.findUnique({where: {email: session.user.email}});
-    if (!user) {
-        user = await prisma.user.create({data: {email: session.user.email}});
+        let user = await prisma.user.findUnique({where: {email: session.user.email}});
+        if (!user) {
+            user = await prisma.user.create({data: {email: session.user.email}});
+        }
+
+        await prisma.board.create({
+            data: {title, userId: user.id},
+        });
+
+        revalidatePath('/');
+    } catch (err) {
+        console.error('createBoard failed:', err);
+        throw err;
     }
-
-    await prisma.board.create({
-        data: {title, userId: user.id},
-    });
-
-    revalidatePath('/');
 }
 
 export async function deleteBoard(id: number) {
-    const session = await auth();
-    if (!session?.user?.email) throw new Error('Not authenticated');
+    try{
+        const session = await auth();
+        if (!session?.user?.email) throw new Error('Not authenticated');
 
-    const user = await prisma.user.findUnique({where: {email: session.user.email}});
-    if (!user) throw new Error('Not authenticated');
+        const user = await prisma.user.findUnique({where: {email: session.user.email}});
+        if (!user) throw new Error('Not authenticated');
 
-    await prisma.board.delete({
-        where: {id, userId: user.id}   
-    });
+        await prisma.board.delete({
+            where: {id, userId: user.id}   
+        });
 
-    revalidatePath('/');
+        revalidatePath('/');
+    }catch (err) {
+        console.error('deleteBoard failed:', err);
+        throw err;
+    }
 }
 
 export async function getBoardWithColumns(id: number) {
@@ -79,65 +89,99 @@ export async function getBoardWithColumns(id: number) {
 }
 
 export async function createColumn(boardId: number, title: string) {
-    await getOwnedBoardOrThrow(boardId);
-    
-    const count = await prisma.column.count({where: {boardId}});
+    try{
+        await getOwnedBoardOrThrow(boardId);
+        
+        const count = await prisma.column.count({where: {boardId}});
 
-    await prisma.column.create({
-        data: {title, boardId, order: count},
-    });
+        await prisma.column.create({
+            data: {title, boardId, order: count},
+        });
 
-    revalidatePath(`/board/${boardId}`);
+        revalidatePath(`/board/${boardId}`);
+    }catch (err) {
+        console.error('createColumn failed:', err);
+        throw err;
+    }
 }
 
 export async function updateColumnTitle(id: number, title: string, boardId: number) {
-    await getOwnedBoardOrThrow(boardId);
+    try{
+        await getOwnedBoardOrThrow(boardId);
 
-    await prisma.column.update({
-        where: {id},
-        data: {title},
-    });
+        await prisma.column.update({
+            where: {id},
+            data: {title},
+        });
 
-    revalidatePath(`/board/${boardId}`);
+        revalidatePath(`/board/${boardId}`);
+    }catch (err) {
+        console.error('updateColumnTitle failed:', err);
+        throw err;
+    }
+
 }
 
 
 export async function deleteColumn(id: number, boardId: number) {
-    await getOwnedBoardOrThrow(boardId);
+    try{
+        await getOwnedBoardOrThrow(boardId);
 
-    await prisma.column.delete({where: {id}});
+        await prisma.column.delete({where: {id}});
 
-    revalidatePath(`/board/${boardId}`);
+        revalidatePath(`/board/${boardId}`);
+    }catch (err) {
+        console.error('deleteColumn failed:', err);
+        throw err;
+    }
+
 }
 
 export async function createCard(columnId: number, title: string, boardId: number) {
-    await getOwnedBoardOrThrow(boardId);
+    try{
+        await getOwnedBoardOrThrow(boardId);
 
-    const count = await prisma.card.count({where: {columnId}});
+        const count = await prisma.card.count({where: {columnId}});
 
-    await prisma.card.create({
-        data: {title, columnId, order: count},
-    });
+        await prisma.card.create({
+            data: {title, columnId, order: count},
+        });
 
-    revalidatePath(`/board/${boardId}`);
+        revalidatePath(`/board/${boardId}`);
+    }catch (err) {
+        console.error('createCard failed:', err);
+        throw err;
+    }
+
 }
 
 export async function deleteCard(id: number, boardId: number) {
-    await getOwnedBoardOrThrow(boardId);
+    try{
+        await getOwnedBoardOrThrow(boardId);
     
-    await prisma.card.delete({where: {id}});
+        await prisma.card.delete({where: {id}});
 
-    revalidatePath(`/board/${boardId}`);
+        revalidatePath(`/board/${boardId}`);
+    }catch (err) {
+        console.error('deleteCard failed:', err);
+        throw err;
+    }
+
 }
 
 export async function moveCard(cardId: number, newColumnId: number, boardId: number) {
-    await getOwnedBoardOrThrow(boardId);
+    try{
+        await getOwnedBoardOrThrow(boardId);
 
-    const count = await prisma.card.count({where: {columnId: newColumnId}});
+        const count = await prisma.card.count({where: {columnId: newColumnId}});
 
-    await prisma.card.update({
-        where: {id: cardId},
-        data: {columnId: newColumnId, order: count},
-    });
+        await prisma.card.update({
+            where: {id: cardId},
+            data: {columnId: newColumnId, order: count},
+        });
     revalidatePath(`/board/${boardId}`);
+    }catch (err) {
+        console.error('moveCard failed:', err);
+        throw err;
+    }
 }
