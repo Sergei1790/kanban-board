@@ -22,10 +22,23 @@ export default function BoardView({board}: {board: Board}) {
     const [activeCard, setActiveCard] = useState<Card | null>(null);
     const sensors = useSensors(useSensor(PointerSensor, {activationConstraint: {distance: 8}}));
 
+    const [addingColumn, setAddingColumn] = useState(false);
+    const [addColumnError, setAddColumnError] = useState('');
+    const [dragError, setDragError] = useState('');
+
     async function handleAddColumn() {
         if (!newColumnTitle.trim()) return;
-        await createColumn(board.id, newColumnTitle.trim());
-        setNewColumnTitle('');
+        setAddingColumn(true);
+        setAddColumnError('');
+        try{
+            await createColumn(board.id, newColumnTitle.trim());
+            setNewColumnTitle('');
+        } catch{
+            setAddColumnError('Failed to add Column. Try again.');
+        } finally{
+            setAddingColumn(false);
+        }
+  
     }
 
     function handleDragStart(event: DragStartEvent){
@@ -34,8 +47,9 @@ export default function BoardView({board}: {board: Board}) {
     }
 
     async function handleDragEnd(event: DragEndEvent) {
-        const {active, over} = event;
         setActiveCard(null); 
+        setDragError('');
+        const {active, over} = event;
         if (!over || active.id === over.id) return;
 
         const cardId = Number(active.id);
@@ -47,6 +61,8 @@ export default function BoardView({board}: {board: Board}) {
         const newColumnId = overColumn?.id ?? overCard?.columnId;
         if (!newColumnId) return;
 
+        const previousColumns = columns;  
+
         setColumns(prev => {
             const card = prev.flatMap(col => col.cards).find(c => c.id === cardId);
             if (!card) return prev;
@@ -55,8 +71,12 @@ export default function BoardView({board}: {board: Board}) {
                 return {...col, cards: col.cards.filter(c => c.id !== cardId)};
             });
         });
-
-        await moveCard(cardId, newColumnId, board.id);
+        try{
+            await moveCard(cardId, newColumnId, board.id);
+        } catch{
+            setColumns(previousColumns); 
+            setDragError('Failed to drag. Try again.');
+        } 
     }
 
     return (
@@ -65,6 +85,7 @@ export default function BoardView({board}: {board: Board}) {
                 <Link href="/" className="text-muted hover:text-foreground text-sm transition-colors mb-2 inline-block">
                     ← Back to boards
                 </Link>
+                {dragError && <p className="text-red-400 text-xs">{dragError}</p>}
                 <h1 className="text-2xl font-bold text-foreground mb-6">{board.title}</h1>
                 <div className="flex gap-4 items-start overflow-x-auto pb-4">
                     {columns.map((col) => (
@@ -78,9 +99,10 @@ export default function BoardView({board}: {board: Board}) {
                             placeholder="New column..."
                             className="border border-white/10 bg-card text-foreground placeholder-muted rounded-xl px-3 py-2 w-full focus:outline-none focus:border-primary/60 mb-2"
                         />
-                        <button type="button" onClick={handleAddColumn} disabled={!newColumnTitle.trim()} className="w-full bg-primary hover:bg-primary/80 text-white px-3 py-2 rounded-xl transition-colors cursor-pointer text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
-                            + Add Column
+                        <button type="button" onClick={handleAddColumn} disabled={ addingColumn || !newColumnTitle.trim()} className="w-full bg-primary hover:bg-primary/80 text-white px-3 py-2 rounded-xl transition-colors cursor-pointer text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                            {addingColumn ? 'Adding Column...' : '+ Add Column'}
                         </button>
+                        {addColumnError && <p className="text-red-400 text-xs mt-1">{addColumnError}</p>}
                     </div>
                 </div>
             </div>
@@ -98,16 +120,57 @@ export default function BoardView({board}: {board: Board}) {
 function ColumnView({column, boardId}: {column: Column; boardId: number}) {
     const [newCardTitle, setNewCardTitle] = useState('');
     const [editing, setEditing] = useState(false);
+    const [updatingColumnTitle, setUpdatingColumnTitle] = useState(false);
+    const [errorUpdateColumnTitle, setErrorUpdateColumnTitle] = useState('');
     const [titleValue, setTitleValue] = useState(column.title);
     const [confirming, setConfirming] = useState(false);
     const {setNodeRef} = useSortable({id: column.id});
 
+    const [addingCard, setAddingCard] = useState(false);
+    const [addingCardError, setAddingCardError] = useState('');
+    const [deletingColumn, setDeletingColumn] = useState(false);
+    const [errorDeleteColumn, setErrorDeleteColumn] = useState('');
+
     async function handleAddCard() {
         if (!newCardTitle.trim()) return;
-        await createCard(column.id, newCardTitle.trim(), boardId);
-        setNewCardTitle('');
+        setAddingCard(true);
+        setAddingCardError('');
+        try{
+            await createCard(column.id, newCardTitle.trim(), boardId);
+            setNewCardTitle('');
+        } catch{
+            setAddingCardError('Failed to add card. Try again.');
+        } finally{
+            setAddingCard(false);
+        }
+
     }
 
+    async function handleUpdateColumnTitle() {
+        setUpdatingColumnTitle(true);
+        setErrorUpdateColumnTitle('');
+        try {
+            await updateColumnTitle(column.id, titleValue, boardId);
+            setEditing(false);
+        } catch {
+            setErrorUpdateColumnTitle('Failed to update column title. Try again.');
+        } finally {
+            setUpdatingColumnTitle(false);
+        }
+    }
+
+
+    async function handleDeleteColumn() {
+        setDeletingColumn(true);
+        setErrorDeleteColumn('');
+        try {
+            await deleteColumn(column.id, boardId)
+        } catch {
+            setErrorDeleteColumn('Failed to delete column. Try again.');
+        } finally {
+            setDeletingColumn(false);
+        }
+    }
     return (
         <div ref={setNodeRef} className="shrink-0 w-64 bg-card border border-white/10 rounded-2xl p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -116,11 +179,8 @@ function ColumnView({column, boardId}: {column: Column; boardId: number}) {
                         autoFocus
                         value={titleValue}
                         onChange={(e) => setTitleValue(e.target.value)}
-                        onKeyDown={async (e) => {
-                            if (e.key === 'Enter') {
-                                await updateColumnTitle(column.id, titleValue, boardId);
-                                setEditing(false);
-                            }
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {handleUpdateColumnTitle()}
                             if (e.key === 'Escape') { setTitleValue(column.title); setEditing(false); }
                         }}
                         className="bg-transparent border-b border-primary/60 text-foreground font-semibold focus:outline-none w-full"
@@ -131,13 +191,18 @@ function ColumnView({column, boardId}: {column: Column; boardId: number}) {
                 {confirming ? (
                     <div className='flex items-center gap-2' onKeyDown={(e) => e.key === 'Escape' && setConfirming(false)}>
                         <span className="text-muted text-xs">Delete?</span>
-                        <button type="button" onClick={() =>deleteColumn(column.id, boardId)}className="text-red-400 hover:text-red-300 text-xs cursor-pointer transition-colors">Yes</button>
+                        <button type="button" onClick={handleDeleteColumn} disabled={deletingColumn} className="text-red-400 hover:text-red-300 text-xs cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            {deletingColumn ? 'Deleting...' : 'Yes'}
+                        </button>
                         <button type="button" onClick={() =>setConfirming(false)}className="text-muted hover:text-foreground text-xs cursor-pointer transition-colors">No</button>
                     </div>
                 ):(
                     <button type='button' onClick={() => setConfirming(true)} className="text-muted hover:text-red-400 text-sm transition-colors cursor-pointer">✕</button>
                 )}
             </div>
+            {errorUpdateColumnTitle && <p className="text-red-400 text-xs mt-1">{errorUpdateColumnTitle}</p>}
+            {errorDeleteColumn && <p className="text-red-400 text-xs mt-1">{errorDeleteColumn}</p>}
+
             <SortableContext items={column.cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
                 <div className="flex flex-col gap-2">
                     {column.cards.map((card) => (
@@ -152,9 +217,10 @@ function ColumnView({column, boardId}: {column: Column; boardId: number}) {
                 placeholder="Add card..."
                 className="border border-white/10 bg-bg text-foreground placeholder-muted rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary/60"
             />
-            <button type="button" onClick={handleAddCard} disabled={!newCardTitle.trim()} className="w-full bg-accent/40 hover:bg-accent/60 text-foreground px-3 py-1 rounded-xl transition-colors cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                + Add Card
+            <button type="button" onClick={handleAddCard} disabled={addingCard || !newCardTitle.trim()} className="w-full bg-accent/40 hover:bg-accent/60 text-foreground px-3 py-1 rounded-xl transition-colors cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                {addingCard ? 'Adding Card...' : '+ Add Card'}
             </button>
+            {addingCardError && <p className="text-red-400 text-xs mt-1">{addingCardError}</p>}
         </div>
     );
 }
@@ -167,23 +233,41 @@ function CardView({card, boardId}: {card: Card; boardId: number}) {
         transition,
         opacity: isDragging ? 0.5 : 1,
     };
+    const [deletingCard, setDeletingCard] = useState(false);
+    const [deleteCardError, setDeleteCardError] = useState('');
+
+    async function handleDeleteCard() {
+        setDeletingCard(true);
+        setDeleteCardError('');
+        try {
+            await deleteCard(card.id, boardId);
+        } catch {
+            setDeleteCardError('Failed to delete card. Try again.');
+        } finally {
+            setDeletingCard(false);
+        }
+    }
 
     return (
-        <div
-            ref={setNodeRef}
-            style={style}                           
-            {...attributes}
-            {...listeners}
-            className="bg-bg border border-white/10 rounded-xl p-3 flex items-center justify-between group cursor-grab active:cursor-grabbing"
-        >
-            <span className="text-foreground text-sm">{card.title}</span>
-            <button
-                type="button"
-                onClick={() => deleteCard(card.id, boardId)}
-                className="text-muted hover:text-red-400 text-xs transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+        <div className="flex flex-col gap-1">
+            <div
+                ref={setNodeRef}
+                style={style}                           
+                {...attributes}
+                {...listeners}
+                className="bg-bg border border-white/10 rounded-xl p-3 flex items-center justify-between group cursor-grab active:cursor-grabbing"
             >
-                ✕
-            </button>
+                <span className="text-foreground text-sm">{card.title}</span>
+                <button
+                    type="button"
+                    onClick={handleDeleteCard}
+                    disabled={deletingCard}
+                    className="text-muted hover:text-red-400 text-xs transition-colors cursor-pointer opacity-0 group-hover:opacity-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {deletingCard ? 'Deleting Card...' : '✕'}
+                </button>
+            </div>
+            {deleteCardError && <p className="text-red-400 text-xs mt-1">{deleteCardError}</p>}
         </div>
     );
 }
