@@ -87,6 +87,9 @@ export default function BoardView({board}: {board: Board}) {
                 </Link>
                 {dragError && <p className="text-red-400 text-xs">{dragError}</p>}
                 <h1 className="text-2xl font-bold text-foreground mb-6">{board.title}</h1>
+                {columns.length === 0 && (
+                    <p className="text-muted text-sm mb-4">No columns yet — add one</p>
+                )}
                 <div className="flex gap-4 items-start overflow-x-auto pb-4">
                     {columns.map((col) => (
                         <ColumnView key={col.id} column={col} boardId={board.id} />
