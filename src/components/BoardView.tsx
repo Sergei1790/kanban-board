@@ -6,6 +6,7 @@ import {DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, us
 import {SortableContext, useSortable, verticalListSortingStrategy} from '@dnd-kit/sortable';
 import {createColumn, deleteColumn, createCard, moveCard, updateColumnTitle} from '@/lib/actions';
 import CardView from './CardView';
+import { computeMove } from '@/lib/board-logic';
 
 type Card = {id: number; title: string; order: number; columnId: number};
 type Column = {id: number; title: string; order: number; cards: Card[]};
@@ -47,36 +48,26 @@ export default function BoardView({board}: {board: Board}) {
     }
 
     async function handleDragEnd(event: DragEndEvent) {
-        setActiveCard(null); 
+        setActiveCard(null);
         setDragError('');
-        const {active, over} = event;
+        const { active, over } = event;
         if (!over || active.id === over.id) return;
 
         const cardId = Number(active.id);
         const overId = Number(over.id);
 
-        const overColumn = columns.find(col => col.id === overId);
-        const overCard = columns.flatMap(col => col.cards).find(card => card.id === overId);
+        const result = computeMove(columns, cardId, overId);
+        if (!result) return;
 
-        const newColumnId = overColumn?.id ?? overCard?.columnId;
-        if (!newColumnId) return;
+        const previousColumns = columns;
+        setColumns(result.newColumns);
 
-        const previousColumns = columns;  
-
-        setColumns(prev => {
-            const card = prev.flatMap(col => col.cards).find(c => c.id === cardId);
-            if (!card) return prev;
-            return prev.map(col => {
-                if (col.id === newColumnId) return {...col, cards: [...col.cards.filter(c => c.id !== cardId), {...card, columnId: newColumnId}]};
-                return {...col, cards: col.cards.filter(c => c.id !== cardId)};
-            });
-        });
-        try{
-            await moveCard(cardId, newColumnId, board.id);
-        } catch{
-            setColumns(previousColumns); 
+        try {
+            await moveCard(cardId, result.newColumnId, board.id);
+        } catch {
+            setColumns(previousColumns);
             setDragError('Failed to drag. Try again.');
-        } 
+        }
     }
 
     return (
