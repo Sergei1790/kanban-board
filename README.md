@@ -4,6 +4,7 @@ A drag-and-drop kanban board with multi-user support, persistent state, and opti
 Built with Next.js 15, TypeScript, Prisma, and dnd-kit.
 
 **Live demo:** https://kanban-board-psi-mauve.vercel.app/
+No signup needed - click **Try the demo** on the sign-in page.
 
 ![screenshot](./public/screenshot.png)
 
@@ -17,6 +18,8 @@ Built with Next.js 15, TypeScript, Prisma, and dnd-kit.
 - Confirmation prompts on destructive actions (delete board, delete column)
 - Loading + error states for every mutation
 - Drag-and-drop rollback on server failure
+- **Demo mode** - one-click demo login with seeded data, auto-reset daily via Vercel cron
+- Drag logic unit-tested (Vitest), run in CI (GitHub Actions)
 - Custom error fallback page (`error.tsx`)
 - Mobile-responsive (horizontal scroll for columns)
 
@@ -28,7 +31,8 @@ Built with Next.js 15, TypeScript, Prisma, and dnd-kit.
 - **Auth:** NextAuth v5
 - **Drag-and-drop:** @dnd-kit/core + @dnd-kit/sortable
 - **Styling:** Tailwind CSS v4
-- **Deploy:** Vercel
+- **Tests:** Vitest
+- **Deploy / CI:** Vercel + GitHub Actions
 
 ## Local setup
 
